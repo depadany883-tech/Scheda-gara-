@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>A.S.D. Atletico Carrara — Scheda Match Analysis</title>
+<style>
+  :root{
+    --blue:#1f4e78;
+    --blue-dark:#163a59;
+    --green:#2f8f5b;
+    --green-dark:#1f6b6b;
+    --red:#c0392b;
+    --slate:#3a4652;
+    --orange:#c2660e;
+    --ink:#1c2530;
+    --paper:#ffffff;
+    --line:#c7d0d8;
+    --cell:#eef2f5;
+    --bg:#e7ebee;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding-bottom:70px;
+  }
+  .toolbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; gap:8px; align-items:center;
+    background:var(--blue-dark); padding:10px 12px;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
+  }
+  .toolbar button{
+    flex:1; border:none; border-radius:8px; padding:11px 8px;
+    font-size:14px; font-weight:600; cursor:pointer;
+  }
+  #btnPrint{background:#ffffff; color:var(--blue-dark);}
+  #btnReset{background:rgba(255,255,255,.12); color:#fff;}
+  #saveStatus{
+    position:absolute; right:10px; bottom:-18px; font-size:11px; color:#5c6b78;
+  }
+  .env-hint{
+    max-width:920px; margin:8px auto 0; padding:8px 14px; font-size:11.5px; color:#7a5b1f;
+    background:#fff6df; border:1px solid #f0dca0; border-radius:8px;
+  }
+  .sheet{
+    max-width:920px; margin:14px auto; background:var(--paper);
+    border-radius:10px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,.12);
+  }
+  .head{ padding:14px 16px 10px; }
+  .brand{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .crest{
+    width:52px; height:58px; flex:none;
+    background:linear-gradient(160deg,var(--green) 0 55%, var(--blue) 55% 100%);
+    clip-path:polygon(50% 0%,100% 15%,100% 62%,50% 100%,0% 62%,0% 15%);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:15px; letter-spacing:.5px;
+  }
+  .brand h1{ font-size:17px; margin:0; color:var(--blue); letter-spacing:.3px; }
+  .brand p{ margin:2px 0 0; font-size:11.5px; color:var(--green-dark); font-weight:700; letter-spacing:.4px; text-transform:uppercase; }
+  .meta-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:6px 14px;
+    background:var(--cell); border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+  }
+  .meta-grid label{ font-size:10.5px; color:#5c6b78; font-weight:700; text-transform:uppercase; letter-spacing:.3px; }
+  .meta-grid label.wide{ grid-column:1/-1; }
+  .meta-grid input{
+    display:block; width:100%; margin-top:2px; border:none; border-bottom:1.5px solid var(--line);
+    background:transparent; padding:5px 2px; font-size:14px; color:var(--ink); font-family:inherit;
+  }
+  .meta-grid input:focus{ outline:none; border-bottom-color:var(--blue); }
+
+  .bar{
+    margin:16px 0 8px; padding:7px 12px; border-radius:6px;
+    color:#fff; font-size:12.5px; font-weight:700; letter-spacing:.3px; text-transform:uppercase;
+  }
+  .bar-blue{background:var(--blue);}
+  .bar-green{background:var(--green);}
+  .bar-darkgreen{background:var(--green-dark);}
+  .bar-red{background:var(--red);}
+  .bar-slate{background:var(--slate);}
+  .bar-orange{background:var(--orange);}
+
+  .two-col{ display:grid; grid-template-columns:1fr; gap:0 20px; padding:0 16px; }
+  @media (min-width:760px){ .two-col{ grid-template-columns:1fr 1fr; } }
+  .col{ min-width:0; }
+
+  .pitch-toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+  .pitch-toolbar select{
+    flex:1; font-size:12.5px; padding:6px 8px; border-radius:6px; border:1px solid var(--line);
+    background:#fff; font-family:inherit;
+  }
+  .pitch-toolbar button{
+    border:1px solid var(--line); background:#fff; border-radius:6px; padding:6px 10px;
+    font-size:11.5px; color:#5c6b78; cursor:pointer;
+  }
+  .pitch-hint{ font-size:10.5px; color:#8592a0; margin:2px 0 8px; }
+
+  .pitch{
+    position:relative; width:100%; aspect-ratio:100/150;
+    background:#dcefe1; border-radius:6px; overflow:hidden;
+    touch-action:none; -webkit-user-select:none; user-select:none;
+  }
+  .pitch.mini{ max-width:280px; margin:0; }
+  .pitch svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .marker{
+    position:absolute; width:9%; aspect-ratio:1/1; min-width:24px; min-height:24px;
+    transform:translate(-50%,-50%);
+    background:var(--blue); color:#fff; border:2px solid #fff;
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:800; box-shadow:0 1px 3px rgba(0,0,0,.35); cursor:grab;
+  }
+  .marker.opp{ background:var(--slate); }
+
+  table.editable{ width:100%; border-collapse:collapse; margin-bottom:4px; }
+  table.editable th{
+    background:var(--cell); font-size:10px; text-transform:uppercase; letter-spacing:.2px;
+    color:#5c6b78; border:1px solid var(--line); padding:5px 4px; font-weight:700;
+  }
+  table.editable td{ border:1px solid var(--line); padding:0; }
+  table.editable td input, table.editable td select{
+    width:100%; border:none; background:transparent; padding:6px 5px; font-size:12.5px;
+    font-family:inherit; color:var(--ink);
+  }
+  table.editable td input:focus, table.editable td select:focus{ outline:2px solid var(--blue); outline-offset:-2px; }
+  table.editable td.num{ text-align:center; font-weight:700; color:#5c6b78; background:var(--cell); width:34px; }
+  col.c-min{width:13%;} col.c-esce{width:29%;} col.c-entra{width:29%;} col.c-note{width:29%;}
+  col.c-card-min{width:13%;} col.c-card-g{width:33%;} col.c-card-c{width:24%;} col.c-card-m{width:30%;}
+
+  .roster-grid{ display:grid; grid-template-columns:1fr; gap:14px; padding:0 16px 4px; }
+  @media (min-width:760px){ .roster-grid{ grid-template-columns:1fr 1fr; } }
+  col.r-n{width:11%;} col.r-g{width:41%;} col.r-r{width:24%;} col.r-note{width:24%;}
+
+  textarea{
+    width:calc(100% - 32px); margin:0 16px 4px; display:block; resize:vertical;
+    border:1px solid var(--line); border-radius:6px; padding:8px; font-family:inherit;
+    font-size:13px; background:repeating-linear-gradient(#fff,#fff 27px,#f0f3f5 28px);
+    line-height:28px;
+  }
+
+  .section-pad{ padding:0 16px; }
+  footer.foot{ height:18px; }
+
+  /* ---------- Modale personalizzata (sostituisce prompt/confirm bloccati in alcune app) ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(20,26,32,.55); z-index:200;
+    display:none; align-items:center; justify-content:center; padding:24px;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-box{
+    background:#fff; border-radius:12px; padding:20px; width:100%; max-width:320px;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+  }
+  .modal-box p{ margin:0 0 12px; font-size:14.5px; color:var(--ink); line-height:1.4; }
+  .modal-box input{
+    width:100%; padding:10px; font-size:16px; border:1.5px solid var(--line); border-radius:8px;
+    margin-bottom:14px; font-family:inherit; box-sizing:border-box;
+  }
+  .modal-actions{ display:flex; gap:10px; }
+  .modal-actions button{
+    flex:1; padding:11px 8px; border-radius:8px; border:none; font-size:14.5px; font-weight:700; cursor:pointer;
+  }
+  .modal-ok{ background:var(--blue); color:#fff; }
+  .modal-remove{ background:var(--red); color:#fff; }
+  .modal-cancel{ background:var(--cell); color:#5c6b78; }
+
+  @media print{
+    body{ background:#fff; padding:0; }
+    .toolbar{ display:none; }
+    .sheet{ box-shadow:none; margin:0; border-radius:0; max-width:none; }
+    .bar, .marker{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .two-col{ break-inside:auto; }
+    table.editable tr{ break-inside:avoid; }
+    .bar{ break-after:avoid; }
+    @page{ size:A4; margin:9mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button id="btnPrint">🖨️ Stampa / PDF</button>
+  <button id="btnReset">🗑️ Nuova scheda</button>
+</div>
+<div id="saveStatus"></div>
+<p class="env-hint">Compilazione, formazioni e reset funzionano ovunque tu apra questa pagina. Per la stampa vera e propria serve invece Safari (o Chrome): se il tasto "Stampa/PDF" non apre nulla, apri il file in un browser reale.</p>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <p id="modalMessage"></p>
+    <input type="text" id="modalInput" style="display:none;">
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<main class="sheet">
+
+  <div class="head">
+    <div class="brand">
+      <div class="crest">AC</div>
+      <div>
+        <h1>A.S.D. ATLETICO CARRARA</h1>
+        <p>Scheda Match Analysis &amp; Report Gara</p>
+      </div>
+    </div>
+    <div class="meta-grid">
+      <label>Data<input type="date" data-key="hdr-data"></label>
+      <label>Gara<input type="text" placeholder="Casa / Trasferta" data-key="hdr-gara"></label>
+      <label>Competizione<input type="text" data-key="hdr-competizione"></label>
+      <label>Giornata<input type="text" data-key="hdr-giornata"></label>
+      <label class="wide">Avversario<input type="text" data-key="hdr-avversario"></label>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="col">
+      <div class="bar bar-blue">Disposizione Iniziale</div>
+      <div class="pitch-toolbar">
+        <select id="formOwn"></select>
+        <button type="button" data-clear="own">Svuota</button>
+      </div>
+      <div class="pitch-hint">Tocca il campo per aggiungere un giocatore, tocca un giocatore per rinominarlo o rimuoverlo, trascina per spostarlo.</div>
+      <div class="pitch large" id="pitchOwn"></div>
+
+      <div class="bar bar-green">Note Generali / Tattiche</div>
+      <textarea rows="4" data-key="noteGenerali"></textarea>
+    </div>
+
+    <div class="col">
+      <div class="bar bar-darkgreen">Disposizione Iniziale Avversario</div>
+      <div class="pitch-toolbar">
+        <select id="formOpp"></select>
+        <button type="button" data-clear="opp">Svuota</button>
+      </div>
+      <div class="pitch mini" id="pitchOpp"></div>
+
+      <div class="bar bar-blue">Sostituzioni (7 disponibili)</div>
+      <table class="editable" id="tblSost">
+        <colgroup><col class="c-min"><col class="c-esce"><col class="c-entra"><col class="c-note"></colgroup>
+        <thead><tr><th>Min</th><th>Esce</th><th>Entra</th><th>Note</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="bar bar-red">Ammonizioni / Espulsioni Nostra Squadra</div>
+      <table class="editable" id="tblCardsOwn">
+        <colgroup><col class="c-card-min"><col class="c-card-g"><col class="c-card-c"><col class="c-card-m"></colgroup>
+        <thead><tr><th>Min</th><th>Giocatore</th><th>Cartellino</th><th>Motivo</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="bar bar-slate">Ammonizioni / Espulsioni Avversario</div>
+      <table class="editable" id="tblCardsOpp">
+        <colgroup><col class="c-card-min"><col class="c-card-g"><col class="c-card-c"><col class="c-card-m"></colgroup>
+        <thead><tr><th>Min</th><th>Giocatore</th><th>Cartellino</th><th>Motivo</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="bar bar-orange">Giocatori da Segnalare</div>
+      <table class="editable" id="tblFlag">
+        <colgroup><col style="width:38%"><col style="width:62%"></colgroup>
+        <thead><tr><th>Giocatore</th><th>Motivo / Note</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-pad">
+    <div class="bar bar-blue">Lista Gara (1–22)</div>
+  </div>
+  <div class="roster-grid">
+    <table class="editable" id="rosterA">
+      <colgroup><col class="r-n"><col class="r-g"><col class="r-r"><col class="r-note"></colgroup>
+      <thead><tr><th>N°</th><th>Giocatore</th><th>Ruolo</th><th>Note</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <table class="editable" id="rosterB">
+      <colgroup><col class="r-n"><col class="r-g"><col class="r-r"><col class="r-note"></colgroup>
+      <thead><tr><th>N°</th><th>Giocatore</th><th>Ruolo</th><th>Note</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="two-col">
+    <div class="col">
+      <div class="bar bar-green">Note Post Partita / Analisi</div>
+      <textarea rows="4" data-key="notePost"></textarea>
+    </div>
+    <div class="col">
+      <div class="bar bar-blue">Osservazioni Allenatore</div>
+      <textarea rows="4" data-key="osservazioni"></textarea>
+    </div>
+  </div>
+  <footer class="foot"></footer>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = "schedaGaraAC_v1";
+
+  /* ---------- Modale personalizzata (sostituisce prompt/confirm) ---------- */
+  var modalOverlay = document.getElementById("modalOverlay");
+  var modalMessage = document.getElementById("modalMessage");
+  var modalInput = document.getElementById("modalInput");
+  var modalActions = document.getElementById("modalActions");
+
+  function closeModal(){ modalOverlay.classList.remove("show"); }
+
+  function askText(message, defaultValue, onOk, onRemove){
+    modalMessage.textContent = message;
+    modalInput.style.display = "block";
+    modalInput.value = defaultValue || "";
+    modalActions.innerHTML = "";
+    var btnOk = document.createElement("button");
+    btnOk.className = "modal-ok"; btnOk.textContent = "OK";
+    btnOk.addEventListener("click", function(){
+      var v = modalInput.value;
+      closeModal();
+      onOk(v);
+    });
+    modalActions.appendChild(btnOk);
+    if(onRemove){
+      var btnRemove = document.createElement("button");
+      btnRemove.className = "modal-remove"; btnRemove.textContent = "Rimuovi";
+      btnRemove.addEventListener("click", function(){ closeModal(); onRemove(); });
+      modalActions.appendChild(btnRemove);
+    }
+    var btnCancel = document.createElement("button");
+    btnCancel.className = "modal-cancel"; btnCancel.textContent = "Annulla";
+    btnCancel.addEventListener("click", closeModal);
+    modalActions.appendChild(btnCancel);
+    modalOverlay.classList.add("show");
+    setTimeout(function(){ modalInput.focus(); modalInput.select(); }, 50);
+    modalInput.onkeydown = function(e){ if(e.key === "Enter"){ btnOk.click(); } };
+  }
+
+  function askConfirm(message, onOk){
+    modalMessage.textContent = message;
+    modalInput.style.display = "none";
+    modalActions.innerHTML = "";
+    var btnOk = document.createElement("button");
+    btnOk.className = "modal-ok"; btnOk.textContent = "Conferma";
+    btnOk.addEventListener("click", function(){ closeModal(); onOk(); });
+    modalActions.appendChild(btnOk);
+    var btnCancel = document.createElement("button");
+    btnCancel.className = "modal-cancel"; btnCancel.textContent = "Annulla";
+    btnCancel.addEventListener("click", closeModal);
+    modalActions.appendChild(btnCancel);
+    modalOverlay.classList.add("show");
+  }
+
+  /* ---------- Pitch SVG ---------- */
+  function pitchSVG(){
+    return '<svg viewBox="0 0 100 150" preserveAspectRatio="none">' +
+      '<rect x="1" y="1" width="98" height="148" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<line x1="1" y1="75" x2="99" y2="75" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<circle cx="50" cy="75" r="12" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<circle cx="50" cy="75" r="0.9" fill="#2f6b46"/>' +
+      '<rect x="20" y="1" width="60" height="22" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<rect x="38" y="1" width="24" height="8" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<circle cx="50" cy="18" r="0.9" fill="#2f6b46"/>' +
+      '<path d="M 35 23 A 15 15 0 0 0 65 23" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<rect x="20" y="127" width="60" height="22" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<rect x="38" y="141" width="24" height="8" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '<circle cx="50" cy="132" r="0.9" fill="#2f6b46"/>' +
+      '<path d="M 35 127 A 15 15 0 0 1 65 127" fill="none" stroke="#2f6b46" stroke-width="0.8"/>' +
+      '</svg>';
+  }
+
+  /* ---------- Formazioni preimpostate (coordinate in unità viewBox 0-100 x, 0-150 y) ---------- */
+  var FORMATIONS = {
+    "4-4-2": [[50,142],[20,120],[40,122],[60,122],[80,120],[20,95],[40,97],[60,97],[80,95],[38,72],[62,72]],
+    "4-3-3": [[50,142],[18,120],[38,122],[62,122],[82,120],[30,97],[50,100],[70,97],[20,72],[50,68],[80,72]],
+    "3-5-2": [[50,142],[30,120],[50,124],[70,120],[15,97],[35,99],[50,101],[65,99],[85,97],[38,72],[62,72]],
+    "4-2-3-1": [[50,142],[20,120],[40,122],[60,122],[80,120],[38,102],[62,102],[22,85],[50,82],[78,85],[50,68]],
+    "3-4-3": [[50,142],[30,120],[50,124],[70,120],[18,97],[38,99],[62,99],[82,97],[22,72],[50,68],[78,72]]
+  };
+  var FORM_LABELS = Object.keys(FORMATIONS);
+
+  function fillFormationSelect(sel){
+    var opt = document.createElement("option");
+    opt.value = ""; opt.textContent = "Modulo…";
+    sel.appendChild(opt);
+    FORM_LABELS.forEach(function(k){
+      var o = document.createElement("option");
+      o.value = k; o.textContent = k;
+      sel.appendChild(o);
+    });
+  }
+
+  /* ---------- Controller campo/marcatori ---------- */
+  function PitchController(containerEl, opts){
+    this.el = containerEl;
+    this.opts = opts || {};
+    this.markers = [];
+    this.el.innerHTML = pitchSVG() + '<div class="markers-layer" style="position:absolute;inset:0;"></div>';
+    this.layer = this.el.querySelector(".markers-layer");
+    this.bindLayer();
+  }
+  PitchController.prototype.render = function(){
+    var self = this;
+    this.layer.innerHTML = "";
+    this.markers.forEach(function(m, idx){
+      var d = document.createElement("div");
+      d.className = "marker" + (self.opts.opp ? " opp" : "");
+      d.style.left = m.x + "%";
+      d.style.top = (m.y / 150 * 100) + "%";
+      d.textContent = m.label;
+      self.bindMarker(d, idx);
+      self.layer.appendChild(d);
+    });
+    save();
+  };
+  PitchController.prototype.bindLayer = function(){
+    var self = this;
+    this.layer.addEventListener("pointerdown", function(e){
+      if(e.target !== self.layer) return;
+      if(self.markers.length >= 11) return;
+      var rect = self.layer.getBoundingClientRect();
+      var xPct = (e.clientX - rect.left) / rect.width * 100;
+      var yUnits = (e.clientY - rect.top) / rect.height * 150;
+      askText("Numero maglia / etichetta:", String(self.markers.length + 1), function(label){
+        label = (label || "").trim();
+        if(!label) return;
+        self.markers.push({x: clamp(xPct,3,97), y: clamp(yUnits,4,146), label: label.slice(0,4)});
+        self.render();
+      });
+    });
+  };
+  PitchController.prototype.bindMarker = function(el, idx){
+    var self = this;
+    var dragging = false, moved = false, startX, startY;
+    el.addEventListener("pointerdown", function(e){
+      e.stopPropagation();
+      dragging = true; moved = false;
+      startX = e.clientX; startY = e.clientY;
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener("pointermove", function(e){
+      if(!dragging) return;
+      if(Math.abs(e.clientX-startX) > 5 || Math.abs(e.clientY-startY) > 5) moved = true;
+      if(!moved) return;
+      var rect = self.layer.getBoundingClientRect();
+      var xPct = (e.clientX - rect.left) / rect.width * 100;
+      var yUnits = (e.clientY - rect.top) / rect.height * 150;
+      self.markers[idx].x = clamp(xPct,3,97);
+      self.markers[idx].y = clamp(yUnits,4,146);
+      el.style.left = self.markers[idx].x + "%";
+      el.style.top = (self.markers[idx].y/150*100) + "%";
+    });
+    el.addEventListener("pointerup", function(e){
+      dragging = false;
+      if(moved){ save(); return; }
+      askText("Numero maglia / etichetta:", self.markers[idx].label, function(label){
+        label = (label || "").trim();
+        if(!label) return;
+        self.markers[idx].label = label.slice(0,4);
+        self.render();
+      }, function(){
+        self.markers.splice(idx,1);
+        self.render();
+      });
+    });
+  };
+  PitchController.prototype.setFormation = function(key){
+    if(!FORMATIONS[key]) return;
+    var self = this;
+    if(this.markers.length){
+      askConfirm("Sostituire la disposizione attuale con il modulo " + key + "?", function(){
+        self.markers = FORMATIONS[key].map(function(p,i){ return {x:p[0], y:p[1], label:String(i+1)}; });
+        self.render();
+      });
+    } else {
+      self.markers = FORMATIONS[key].map(function(p,i){ return {x:p[0], y:p[1], label:String(i+1)}; });
+      self.render();
+    }
+  };
+  PitchController.prototype.clear = function(){
+    var self = this;
+    if(this.markers.length){
+      askConfirm("Svuotare il campo?", function(){ self.markers = []; self.render(); });
+    }
+  };
+
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+  /* ---------- Tabelle generiche ---------- */
+  function buildRows(tbodyEl, rowCount, cols, keyPrefix, fixedFirstCol){
+    for(var i=0;i<rowCount;i++){
+      var tr = document.createElement("tr");
+      if(fixedFirstCol){
+        var td0 = document.createElement("td");
+        td0.className = "num";
+        td0.textContent = fixedFirstCol(i);
+        tr.appendChild(td0);
+      }
+      cols.forEach(function(col){
+        var td = document.createElement("td");
+        var field;
+        if(col.type === "select"){
+          field = document.createElement("select");
+          var blank = document.createElement("option");
+          blank.value=""; blank.textContent="Giallo / Rosso";
+          field.appendChild(blank);
+          ["Giallo","Rosso"].forEach(function(v){
+            var o=document.createElement("option"); o.value=v; o.textContent=v; field.appendChild(o);
+          });
+        } else {
+          field = document.createElement("input");
+          field.type = "text";
+        }
+        field.dataset.key = keyPrefix + "-" + i + "-" + col.key;
+        td.appendChild(field);
+        tr.appendChild(td);
+      });
+      tbodyEl.appendChild(tr);
+    }
+  }
+
+  /* ---------- Costruzione pagina ---------- */
+  var selOwn = document.getElementById("formOwn");
+  var selOpp = document.getElementById("formOpp");
+  fillFormationSelect(selOwn);
+  fillFormationSelect(selOpp);
+  selOwn.dataset.key = "formSelOwn";
+  selOpp.dataset.key = "formSelOpp";
+
+  var pitchOwn = new PitchController(document.getElementById("pitchOwn"), {opp:false});
+  var pitchOpp = new PitchController(document.getElementById("pitchOpp"), {opp:true});
+
+  selOwn.addEventListener("change", function(){ if(selOwn.value) pitchOwn.setFormation(selOwn.value); });
+  selOpp.addEventListener("change", function(){ if(selOpp.value) pitchOpp.setFormation(selOpp.value); });
+  document.querySelector('[data-clear="own"]').addEventListener("click", function(){ pitchOwn.clear(); });
+  document.querySelector('[data-clear="opp"]').addEventListener("click", function(){ pitchOpp.clear(); });
+
+  buildRows(document.querySelector("#tblSost tbody"), 7,
+    [{key:"esce"},{key:"entra"},{key:"note"}], "sost");
+  buildRows(document.querySelector("#tblCardsOwn tbody"), 5,
+    [{key:"giocatore"},{key:"cartellino",type:"select"},{key:"motivo"}], "cardOwn");
+  buildRows(document.querySelector("#tblCardsOpp tbody"), 5,
+    [{key:"giocatore"},{key:"cartellino",type:"select"},{key:"motivo"}], "cardOpp");
+  buildRows(document.querySelector("#tblFlag tbody"), 4,
+    [{key:"giocatore"},{key:"motivo"}], "flag");
+  buildRows(document.querySelector("#rosterA tbody"), 11,
+    [{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterA", function(i){ return i+1; });
+  buildRows(document.querySelector("#rosterB tbody"), 11,
+    [{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterB", function(i){ return i+12; });
+
+  /* rimuovi celle MIN vuote per tabelle sostituzioni/cartellini (hanno colonna Min come input, non fissa) */
+  (function addMinColumns(){
+    ["#tblSost tbody tr","#tblCardsOwn tbody tr","#tblCardsOpp tbody tr"].forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(tr, i){
+        var input = document.createElement("input");
+        input.type = "text"; input.inputMode = "numeric"; input.placeholder="";
+        var prefix = tr.closest("table").id === "tblSost" ? "sost" : (tr.closest("table").id === "tblCardsOwn" ? "cardOwn" : "cardOpp");
+        input.dataset.key = prefix + "-" + i + "-min";
+        var td = document.createElement("td");
+        td.className = "num";
+        td.appendChild(input);
+        tr.insertBefore(td, tr.firstChild);
+      });
+    });
+  })();
+
+  /* ---------- Autosave ---------- */
+  var saveTimer = null;
+  function save(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      var data = {};
+      document.querySelectorAll("[data-key]").forEach(function(el){ data[el.dataset.key] = el.value; });
+      data.__own = pitchOwn.markers;
+      data.__opp = pitchOpp.markers;
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        var st = document.getElementById("saveStatus");
+        st.textContent = "Salvato " + new Date().toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+        setTimeout(function(){ st.textContent=""; }, 2500);
+      }catch(e){ /* storage non disponibile: si continua comunque */ }
+    }, 400);
+  }
+
+  function load(){
+    var raw;
+    try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){ return; }
+    if(!raw) return;
+    var data;
+    try{ data = JSON.parse(raw); }catch(e){ return; }
+    document.querySelectorAll("[data-key]").forEach(function(el){
+      if(data[el.dataset.key] !== undefined) el.value = data[el.dataset.key];
+    });
+    if(Array.isArray(data.__own)){ pitchOwn.markers = data.__own; pitchOwn.render(); }
+    if(Array.isArray(data.__opp)){ pitchOpp.markers = data.__opp; pitchOpp.render(); }
+  }
+
+  document.addEventListener("input", function(e){ if(e.target.dataset && e.target.dataset.key) save(); });
+  document.addEventListener("change", function(e){ if(e.target.dataset && e.target.dataset.key) save(); });
+
+  document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
+  document.getElementById("btnReset").addEventListener("click", function(){
+    askConfirm("Cancellare tutti i dati e iniziare una scheda nuova? L'operazione non è reversibile.", function(){
+      try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+      document.querySelectorAll("[data-key]").forEach(function(el){ el.value = ""; });
+      pitchOwn.markers = []; pitchOwn.render();
+      pitchOpp.markers = []; pitchOpp.render();
+    });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
