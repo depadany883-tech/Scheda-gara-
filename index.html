@@ -128,6 +128,7 @@
   table.editable td input:focus, table.editable td select:focus{ outline:2px solid var(--blue); outline-offset:-2px; }
   table.editable td input[type="checkbox"]{ width:18px; height:18px; padding:0; margin:6px auto; display:block; }
   table.editable td.num{ text-align:center; font-weight:700; color:#5c6b78; background:var(--cell); width:34px; }
+  table.editable td.num input{ text-align:center; font-weight:700; color:#5c6b78; background:transparent; }
   col.c-min{width:13%;} col.c-esce{width:29%;} col.c-entra{width:29%;} col.c-note{width:29%;}
   col.c-card-min{width:13%;} col.c-card-g{width:33%;} col.c-card-c{width:24%;} col.c-card-m{width:30%;}
 
@@ -285,7 +286,10 @@
       <tbody></tbody>
     </table>
   </div>
-  <p class="pitch-hint section-pad">Scegli il ruolo di ogni giocatore dal menu e spunta "Tit." per gli 11 titolari: tornando su "Disposizione Iniziale" e toccando "Disponi titolari" verranno piazzati sul campo nella posizione giusta (portiere in porta, difensori dietro, ecc.) con il loro numero di maglia.</p>
+  <p class="pitch-hint section-pad">Scegli il ruolo di ogni giocatore dal menu e spunta "Tit." per gli 11 titolari: tornando su "Disposizione Iniziale" e toccando "Disponi titolari" verranno piazzati sul campo nella posizione giusta (portiere in porta, difensori dietro, ecc.) con il numero di maglia scritto qui. Il numero è modificabile in qualsiasi momento (es. se il mister lo cambia per una partita): nome, ruolo e numero restano salvati anche dopo "Nuova scheda" — dovrai solo rispuntare i titolari a ogni partita.</p>
+  <div class="section-pad" style="margin:6px 0 4px;">
+    <button type="button" id="btnClearSquad" style="border:1px solid var(--line); background:#fff; color:#a04040; border-radius:8px; padding:8px 12px; font-size:12px; font-family:inherit;">Svuota rosa salvata</button>
+  </div>
 
   <div class="two-col">
     <div class="col">
@@ -304,6 +308,7 @@
 (function(){
   "use strict";
   var STORAGE_KEY = "schedaGaraAC_v1";
+  var SQUAD_KEY = "rosaSquadraAC_v1";
 
   /* ---------- Modale personalizzata (sostituisce prompt/confirm) ---------- */
   var modalOverlay = document.getElementById("modalOverlay");
@@ -367,23 +372,61 @@
     modalOverlay.classList.add("show");
   }
 
-  /* ---------- Lista Gara: lettura giocatori/titolari ---------- */
+  /* ---------- Lista Gara: lettura giocatori/titolari (per riga/slot, non per numero) ---------- */
+  var ROSTER_SLOTS = (function(){
+    var arr = [];
+    for(var i=0;i<11;i++) arr.push({prefix:"rosterA", idx:i});
+    for(var j=0;j<11;j++) arr.push({prefix:"rosterB", idx:j});
+    return arr;
+  })();
+  function slotOrder(p){ return (p.prefix === "rosterB" ? 11 : 0) + p.idx; }
   function getRosterPlayers(){
-    var players = [];
-    for(var i=0;i<11;i++){
-      var g = document.querySelector('[data-key="rosterA-'+i+'-giocatore"]');
-      var t = document.querySelector('[data-key="rosterA-'+i+'-tit"]');
-      var r = document.querySelector('[data-key="rosterA-'+i+'-ruolo"]');
-      players.push({n:i+1, name: g ? g.value.trim() : "", checked: t ? t.checked : false, ruolo: r ? r.value : ""});
-    }
-    for(var j=0;j<11;j++){
-      var g2 = document.querySelector('[data-key="rosterB-'+j+'-giocatore"]');
-      var t2 = document.querySelector('[data-key="rosterB-'+j+'-tit"]');
-      var r2 = document.querySelector('[data-key="rosterB-'+j+'-ruolo"]');
-      players.push({n:j+12, name: g2 ? g2.value.trim() : "", checked: t2 ? t2.checked : false, ruolo: r2 ? r2.value : ""});
-    }
-    return players;
+    return ROSTER_SLOTS.map(function(s){
+      var key = s.prefix + "-" + s.idx + "-";
+      var g = document.querySelector('[data-key="'+key+'giocatore"]');
+      var t = document.querySelector('[data-key="'+key+'tit"]');
+      var r = document.querySelector('[data-key="'+key+'ruolo"]');
+      var nEl = document.querySelector('[data-key="'+key+'numero"]');
+      var nVal = nEl ? parseInt(nEl.value,10) : NaN;
+      return {
+        prefix: s.prefix, idx: s.idx,
+        n: isNaN(nVal) ? null : nVal,
+        name: g ? g.value.trim() : "",
+        checked: t ? t.checked : false,
+        ruolo: r ? r.value : ""
+      };
+    });
   }
+
+  /* ---------- Rosa squadra persistente (numero, nome, ruolo — sopravvive a "Nuova scheda") ---------- */
+  var squadSaveTimer = null;
+  function saveSquad(){
+    clearTimeout(squadSaveTimer);
+    squadSaveTimer = setTimeout(function(){
+      var squad = getRosterPlayers().map(function(p){
+        return {prefix:p.prefix, idx:p.idx, numero:p.n, name:p.name, ruolo:p.ruolo};
+      });
+      try{ localStorage.setItem(SQUAD_KEY, JSON.stringify(squad)); }catch(e){}
+    }, 400);
+  }
+  function loadSquad(){
+    var raw;
+    try{ raw = localStorage.getItem(SQUAD_KEY); }catch(e){ return; }
+    if(!raw) return;
+    var squad;
+    try{ squad = JSON.parse(raw); }catch(e){ return; }
+    if(!Array.isArray(squad)) return;
+    squad.forEach(function(p){
+      var key = p.prefix + "-" + p.idx + "-";
+      var g = document.querySelector('[data-key="'+key+'giocatore"]');
+      var r = document.querySelector('[data-key="'+key+'ruolo"]');
+      var nEl = document.querySelector('[data-key="'+key+'numero"]');
+      if(g && p.name) g.value = p.name;
+      if(r && p.ruolo) r.value = p.ruolo;
+      if(nEl && p.numero !== null && p.numero !== undefined) nEl.value = String(p.numero);
+    });
+  }
+  var ROSTER_IDENTITY_RE = /^(rosterA|rosterB)-\d+-(numero|giocatore|ruolo)$/;
   function nameForNumber(label){
     var n = parseInt(label,10);
     if(isNaN(n)) return null;
@@ -578,6 +621,12 @@
           field = document.createElement("input");
           field.type = "checkbox";
           td.style.textAlign = "center";
+        } else if(col.type === "numero"){
+          field = document.createElement("input");
+          field.type = "text";
+          field.inputMode = "numeric";
+          td.className = "num";
+          if(col.default) field.value = col.default(i);
         } else {
           field = document.createElement("input");
           field.type = "text";
@@ -615,9 +664,13 @@
   buildRows(document.querySelector("#tblFlag tbody"), 4,
     [{key:"giocatore"},{key:"motivo"}], "flag");
   buildRows(document.querySelector("#rosterA tbody"), 11,
-    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo",type:"select",options:ROLE_OPTIONS,placeholder:"Ruolo…"},{key:"note"}], "rosterA", function(i){ return i+1; });
+    [{key:"numero",type:"numero",default:function(i){ return String(i+1); }},
+     {key:"tit",type:"checkbox"},{key:"giocatore"},
+     {key:"ruolo",type:"select",options:ROLE_OPTIONS,placeholder:"Ruolo…"},{key:"note"}], "rosterA");
   buildRows(document.querySelector("#rosterB tbody"), 11,
-    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo",type:"select",options:ROLE_OPTIONS,placeholder:"Ruolo…"},{key:"note"}], "rosterB", function(i){ return i+12; });
+    [{key:"numero",type:"numero",default:function(i){ return String(i+12); }},
+     {key:"tit",type:"checkbox"},{key:"giocatore"},
+     {key:"ruolo",type:"select",options:ROLE_OPTIONS,placeholder:"Ruolo…"},{key:"note"}], "rosterB");
 
   /* rimuovi celle MIN vuote per tabelle sostituzioni/cartellini (hanno colonna Min come input, non fissa) */
   (function addMinColumns(){
@@ -670,18 +723,37 @@
     if(Array.isArray(data.__opp)){ pitchOpp.markers = data.__opp; pitchOpp.render(); }
   }
 
-  document.addEventListener("input", function(e){ if(e.target.dataset && e.target.dataset.key) save(); });
-  document.addEventListener("change", function(e){ if(e.target.dataset && e.target.dataset.key) save(); });
+  document.addEventListener("input", function(e){
+    if(!(e.target.dataset && e.target.dataset.key)) return;
+    save();
+    if(ROSTER_IDENTITY_RE.test(e.target.dataset.key)) saveSquad();
+  });
+  document.addEventListener("change", function(e){
+    if(!(e.target.dataset && e.target.dataset.key)) return;
+    save();
+    if(ROSTER_IDENTITY_RE.test(e.target.dataset.key)) saveSquad();
+  });
 
   document.getElementById("btnPrint").addEventListener("click", function(){ window.print(); });
   document.getElementById("btnReset").addEventListener("click", function(){
-    askConfirm("Cancellare tutti i dati e iniziare una scheda nuova? L'operazione non è reversibile.", function(){
+    askConfirm("Cancellare i dati di questa partita (formazioni, cartellini, sostituzioni, note) e iniziare una scheda nuova? La rosa (numeri, nomi e ruoli in Lista Gara) resterà salvata.", function(){
       try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
       document.querySelectorAll("[data-key]").forEach(function(el){
+        if(ROSTER_IDENTITY_RE.test(el.dataset.key)) return; // mantieni nomi e ruoli della rosa
         if(el.type === "checkbox"){ el.checked = false; } else { el.value = ""; }
       });
       pitchOwn.markers = []; pitchOwn.render();
       pitchOpp.markers = []; pitchOpp.render();
+    });
+  });
+
+  document.getElementById("btnClearSquad").addEventListener("click", function(){
+    askConfirm("Svuotare del tutto la rosa salvata (tutti i nomi e ruoli in Lista Gara)? Da rifare a mano per la prossima partita.", function(){
+      try{ localStorage.removeItem(SQUAD_KEY); }catch(e){}
+      document.querySelectorAll("[data-key]").forEach(function(el){
+        if(ROSTER_IDENTITY_RE.test(el.dataset.key)) el.value = "";
+      });
+      save();
     });
   });
 
@@ -697,12 +769,14 @@
       if(la !== lb) return la - lb;
       var sa = sideRankForRole(a.ruolo), sb = sideRankForRole(b.ruolo);
       if(sa !== sb) return sa - sb;
-      return a.n - b.n;
+      var an = a.n === null ? Infinity : a.n, bn = b.n === null ? Infinity : b.n;
+      if(an !== bn) return an - bn;
+      return slotOrder(a) - slotOrder(b);
     });
     var formKey = selOwn.value || "4-4-2";
     var coords = FORMATIONS[formKey];
     function place(){
-      pitchOwn.markers = ordered.map(function(p, i){ return {x: coords[i][0], y: coords[i][1], label: String(p.n)}; });
+      pitchOwn.markers = ordered.map(function(p, i){ return {x: coords[i][0], y: coords[i][1], label: (p.n === null ? "?" : String(p.n))}; });
       pitchOwn.render();
     }
     if(pitchOwn.markers.length){
@@ -712,7 +786,9 @@
     }
   });
 
+  loadSquad();
   load();
+  saveSquad();
 })();
 </script>
 </body>
