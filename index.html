@@ -126,13 +126,14 @@
     font-family:inherit; color:var(--ink);
   }
   table.editable td input:focus, table.editable td select:focus{ outline:2px solid var(--blue); outline-offset:-2px; }
+  table.editable td input[type="checkbox"]{ width:18px; height:18px; padding:0; margin:6px auto; display:block; }
   table.editable td.num{ text-align:center; font-weight:700; color:#5c6b78; background:var(--cell); width:34px; }
   col.c-min{width:13%;} col.c-esce{width:29%;} col.c-entra{width:29%;} col.c-note{width:29%;}
   col.c-card-min{width:13%;} col.c-card-g{width:33%;} col.c-card-c{width:24%;} col.c-card-m{width:30%;}
 
   .roster-grid{ display:grid; grid-template-columns:1fr; gap:14px; padding:0 16px 4px; }
   @media (min-width:760px){ .roster-grid{ grid-template-columns:1fr 1fr; } }
-  col.r-n{width:11%;} col.r-g{width:41%;} col.r-r{width:24%;} col.r-note{width:24%;}
+  col.r-n{width:10%;} col.r-g{width:38%;} col.r-r{width:22%;} col.r-note{width:22%;}
 
   textarea{
     width:calc(100% - 32px); margin:0 16px 4px; display:block; resize:vertical;
@@ -221,6 +222,9 @@
         <select id="formOwn"></select>
         <button type="button" data-clear="own">Svuota</button>
       </div>
+      <div class="pitch-toolbar">
+        <button type="button" id="btnAutoPlace" style="flex:1;">⚽ Disponi titolari (dalla Lista Gara)</button>
+      </div>
       <div class="pitch-hint">Tocca il campo per aggiungere un giocatore, tocca un giocatore per rinominarlo o rimuoverlo, trascina per spostarlo.</div>
       <div class="pitch large" id="pitchOwn"></div>
 
@@ -271,16 +275,17 @@
   </div>
   <div class="roster-grid">
     <table class="editable" id="rosterA">
-      <colgroup><col class="r-n"><col class="r-g"><col class="r-r"><col class="r-note"></colgroup>
-      <thead><tr><th>N°</th><th>Giocatore</th><th>Ruolo</th><th>Note</th></tr></thead>
+      <colgroup><col class="r-n"><col style="width:9%"><col class="r-g"><col class="r-r"><col class="r-note"></colgroup>
+      <thead><tr><th>N°</th><th>Tit.</th><th>Giocatore</th><th>Ruolo</th><th>Note</th></tr></thead>
       <tbody></tbody>
     </table>
     <table class="editable" id="rosterB">
-      <colgroup><col class="r-n"><col class="r-g"><col class="r-r"><col class="r-note"></colgroup>
-      <thead><tr><th>N°</th><th>Giocatore</th><th>Ruolo</th><th>Note</th></tr></thead>
+      <colgroup><col class="r-n"><col style="width:9%"><col class="r-g"><col class="r-r"><col class="r-note"></colgroup>
+      <thead><tr><th>N°</th><th>Tit.</th><th>Giocatore</th><th>Ruolo</th><th>Note</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
+  <p class="pitch-hint section-pad">Spunta "Tit." per gli 11 titolari, poi torna su "Disposizione Iniziale" e tocca "Disponi titolari" per piazzarli sul campo con il loro numero di maglia.</p>
 
   <div class="two-col">
     <div class="col">
@@ -349,6 +354,42 @@
     btnCancel.addEventListener("click", closeModal);
     modalActions.appendChild(btnCancel);
     modalOverlay.classList.add("show");
+  }
+
+  function showAlert(message){
+    modalMessage.textContent = message;
+    modalInput.style.display = "none";
+    modalActions.innerHTML = "";
+    var btnOk = document.createElement("button");
+    btnOk.className = "modal-ok"; btnOk.textContent = "OK";
+    btnOk.addEventListener("click", closeModal);
+    modalActions.appendChild(btnOk);
+    modalOverlay.classList.add("show");
+  }
+
+  /* ---------- Lista Gara: lettura giocatori/titolari ---------- */
+  function getRosterPlayers(){
+    var players = [];
+    for(var i=0;i<11;i++){
+      var g = document.querySelector('[data-key="rosterA-'+i+'-giocatore"]');
+      var t = document.querySelector('[data-key="rosterA-'+i+'-tit"]');
+      players.push({n:i+1, name: g ? g.value.trim() : "", checked: t ? t.checked : false});
+    }
+    for(var j=0;j<11;j++){
+      var g2 = document.querySelector('[data-key="rosterB-'+j+'-giocatore"]');
+      var t2 = document.querySelector('[data-key="rosterB-'+j+'-tit"]');
+      players.push({n:j+12, name: g2 ? g2.value.trim() : "", checked: t2 ? t2.checked : false});
+    }
+    return players;
+  }
+  function nameForNumber(label){
+    var n = parseInt(label,10);
+    if(isNaN(n)) return null;
+    var players = getRosterPlayers();
+    for(var i=0;i<players.length;i++){
+      if(players[i].n === n && players[i].name) return players[i].name;
+    }
+    return null;
   }
 
   /* ---------- Pitch SVG ---------- */
@@ -453,7 +494,10 @@
     el.addEventListener("pointerup", function(e){
       dragging = false;
       if(moved){ save(); return; }
-      askText("Numero maglia / etichetta:", self.markers[idx].label, function(label){
+      var currentLabel = self.markers[idx].label;
+      var nm = nameForNumber(currentLabel);
+      var msg = nm ? ("Numero maglia / etichetta (" + nm + "):") : "Numero maglia / etichetta:";
+      askText(msg, currentLabel, function(label){
         label = (label || "").trim();
         if(!label) return;
         self.markers[idx].label = label.slice(0,4);
@@ -507,6 +551,10 @@
           ["Giallo","Rosso"].forEach(function(v){
             var o=document.createElement("option"); o.value=v; o.textContent=v; field.appendChild(o);
           });
+        } else if(col.type === "checkbox"){
+          field = document.createElement("input");
+          field.type = "checkbox";
+          td.style.textAlign = "center";
         } else {
           field = document.createElement("input");
           field.type = "text";
@@ -544,9 +592,9 @@
   buildRows(document.querySelector("#tblFlag tbody"), 4,
     [{key:"giocatore"},{key:"motivo"}], "flag");
   buildRows(document.querySelector("#rosterA tbody"), 11,
-    [{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterA", function(i){ return i+1; });
+    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterA", function(i){ return i+1; });
   buildRows(document.querySelector("#rosterB tbody"), 11,
-    [{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterB", function(i){ return i+12; });
+    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterB", function(i){ return i+12; });
 
   /* rimuovi celle MIN vuote per tabelle sostituzioni/cartellini (hanno colonna Min come input, non fissa) */
   (function addMinColumns(){
@@ -570,7 +618,9 @@
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function(){
       var data = {};
-      document.querySelectorAll("[data-key]").forEach(function(el){ data[el.dataset.key] = el.value; });
+      document.querySelectorAll("[data-key]").forEach(function(el){
+        data[el.dataset.key] = (el.type === "checkbox") ? el.checked : el.value;
+      });
       data.__own = pitchOwn.markers;
       data.__opp = pitchOpp.markers;
       try{
@@ -589,7 +639,9 @@
     var data;
     try{ data = JSON.parse(raw); }catch(e){ return; }
     document.querySelectorAll("[data-key]").forEach(function(el){
-      if(data[el.dataset.key] !== undefined) el.value = data[el.dataset.key];
+      if(data[el.dataset.key] === undefined) return;
+      if(el.type === "checkbox"){ el.checked = !!data[el.dataset.key]; }
+      else { el.value = data[el.dataset.key]; }
     });
     if(Array.isArray(data.__own)){ pitchOwn.markers = data.__own; pitchOwn.render(); }
     if(Array.isArray(data.__opp)){ pitchOpp.markers = data.__opp; pitchOpp.render(); }
@@ -602,10 +654,32 @@
   document.getElementById("btnReset").addEventListener("click", function(){
     askConfirm("Cancellare tutti i dati e iniziare una scheda nuova? L'operazione non è reversibile.", function(){
       try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
-      document.querySelectorAll("[data-key]").forEach(function(el){ el.value = ""; });
+      document.querySelectorAll("[data-key]").forEach(function(el){
+        if(el.type === "checkbox"){ el.checked = false; } else { el.value = ""; }
+      });
       pitchOwn.markers = []; pitchOwn.render();
       pitchOpp.markers = []; pitchOpp.render();
     });
+  });
+
+  document.getElementById("btnAutoPlace").addEventListener("click", function(){
+    var players = getRosterPlayers();
+    var checked = players.filter(function(p){ return p.checked; });
+    if(checked.length !== 11){
+      showAlert("Seleziona esattamente 11 titolari nella Lista Gara (colonna \"Tit.\") — al momento ne hai selezionati " + checked.length + ".");
+      return;
+    }
+    var formKey = selOwn.value || "4-4-2";
+    var coords = FORMATIONS[formKey];
+    function place(){
+      pitchOwn.markers = checked.map(function(p, i){ return {x: coords[i][0], y: coords[i][1], label: String(p.n)}; });
+      pitchOwn.render();
+    }
+    if(pitchOwn.markers.length){
+      askConfirm("Sostituire la disposizione attuale con gli 11 titolari selezionati?", place);
+    } else {
+      place();
+    }
   });
 
   load();
