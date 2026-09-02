@@ -285,7 +285,7 @@
       <tbody></tbody>
     </table>
   </div>
-  <p class="pitch-hint section-pad">Spunta "Tit." per gli 11 titolari, poi torna su "Disposizione Iniziale" e tocca "Disponi titolari" per piazzarli sul campo con il loro numero di maglia.</p>
+  <p class="pitch-hint section-pad">Scegli il ruolo di ogni giocatore dal menu e spunta "Tit." per gli 11 titolari: tornando su "Disposizione Iniziale" e toccando "Disponi titolari" verranno piazzati sul campo nella posizione giusta (portiere in porta, difensori dietro, ecc.) con il loro numero di maglia.</p>
 
   <div class="two-col">
     <div class="col">
@@ -373,12 +373,14 @@
     for(var i=0;i<11;i++){
       var g = document.querySelector('[data-key="rosterA-'+i+'-giocatore"]');
       var t = document.querySelector('[data-key="rosterA-'+i+'-tit"]');
-      players.push({n:i+1, name: g ? g.value.trim() : "", checked: t ? t.checked : false});
+      var r = document.querySelector('[data-key="rosterA-'+i+'-ruolo"]');
+      players.push({n:i+1, name: g ? g.value.trim() : "", checked: t ? t.checked : false, ruolo: r ? r.value : ""});
     }
     for(var j=0;j<11;j++){
       var g2 = document.querySelector('[data-key="rosterB-'+j+'-giocatore"]');
       var t2 = document.querySelector('[data-key="rosterB-'+j+'-tit"]');
-      players.push({n:j+12, name: g2 ? g2.value.trim() : "", checked: t2 ? t2.checked : false});
+      var r2 = document.querySelector('[data-key="rosterB-'+j+'-ruolo"]');
+      players.push({n:j+12, name: g2 ? g2.value.trim() : "", checked: t2 ? t2.checked : false, ruolo: r2 ? r2.value : ""});
     }
     return players;
   }
@@ -419,6 +421,27 @@
     "3-4-3": [[50,142],[30,120],[50,124],[70,120],[18,97],[38,99],[62,99],[82,97],[22,72],[50,68],[78,72]]
   };
   var FORM_LABELS = Object.keys(FORMATIONS);
+
+  var ROLE_OPTIONS = [
+    "Portiere",
+    "Difensore Centrale", "Terzino Destro", "Terzino Sinistro",
+    "Centrocampista Difensivo", "Centrocampista", "Centrocampista Offensivo",
+    "Esterno Destro", "Esterno Sinistro",
+    "Ala Destra", "Ala Sinistra", "Attaccante"
+  ];
+  function lineRankForRole(role){
+    if(!role) return 2;
+    if(role === "Portiere") return 0;
+    if(role.indexOf("Difensore") === 0 || role.indexOf("Terzino") === 0) return 1;
+    if(role.indexOf("Ala") === 0 || role === "Attaccante") return 3;
+    return 2; // centrocampisti ed esterni
+  }
+  function sideRankForRole(role){
+    if(!role) return 1;
+    if(role.indexOf("Sinistr") !== -1) return 0;
+    if(role.indexOf("Destr") !== -1) return 2;
+    return 1;
+  }
 
   function fillFormationSelect(sel){
     var opt = document.createElement("option");
@@ -546,9 +569,9 @@
         if(col.type === "select"){
           field = document.createElement("select");
           var blank = document.createElement("option");
-          blank.value=""; blank.textContent="Giallo / Rosso";
+          blank.value=""; blank.textContent = col.placeholder || "Giallo / Rosso";
           field.appendChild(blank);
-          ["Giallo","Rosso"].forEach(function(v){
+          (col.options || ["Giallo","Rosso"]).forEach(function(v){
             var o=document.createElement("option"); o.value=v; o.textContent=v; field.appendChild(o);
           });
         } else if(col.type === "checkbox"){
@@ -592,9 +615,9 @@
   buildRows(document.querySelector("#tblFlag tbody"), 4,
     [{key:"giocatore"},{key:"motivo"}], "flag");
   buildRows(document.querySelector("#rosterA tbody"), 11,
-    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterA", function(i){ return i+1; });
+    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo",type:"select",options:ROLE_OPTIONS,placeholder:"Ruolo…"},{key:"note"}], "rosterA", function(i){ return i+1; });
   buildRows(document.querySelector("#rosterB tbody"), 11,
-    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo"},{key:"note"}], "rosterB", function(i){ return i+12; });
+    [{key:"tit",type:"checkbox"},{key:"giocatore"},{key:"ruolo",type:"select",options:ROLE_OPTIONS,placeholder:"Ruolo…"},{key:"note"}], "rosterB", function(i){ return i+12; });
 
   /* rimuovi celle MIN vuote per tabelle sostituzioni/cartellini (hanno colonna Min come input, non fissa) */
   (function addMinColumns(){
@@ -669,14 +692,21 @@
       showAlert("Seleziona esattamente 11 titolari nella Lista Gara (colonna \"Tit.\") — al momento ne hai selezionati " + checked.length + ".");
       return;
     }
+    var ordered = checked.slice().sort(function(a,b){
+      var la = lineRankForRole(a.ruolo), lb = lineRankForRole(b.ruolo);
+      if(la !== lb) return la - lb;
+      var sa = sideRankForRole(a.ruolo), sb = sideRankForRole(b.ruolo);
+      if(sa !== sb) return sa - sb;
+      return a.n - b.n;
+    });
     var formKey = selOwn.value || "4-4-2";
     var coords = FORMATIONS[formKey];
     function place(){
-      pitchOwn.markers = checked.map(function(p, i){ return {x: coords[i][0], y: coords[i][1], label: String(p.n)}; });
+      pitchOwn.markers = ordered.map(function(p, i){ return {x: coords[i][0], y: coords[i][1], label: String(p.n)}; });
       pitchOwn.render();
     }
     if(pitchOwn.markers.length){
-      askConfirm("Sostituire la disposizione attuale con gli 11 titolari selezionati?", place);
+      askConfirm("Sostituire la disposizione attuale con gli 11 titolari selezionati (ordinati per ruolo)?", place);
     } else {
       place();
     }
